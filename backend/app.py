@@ -1,8 +1,15 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import os
 
 app = Flask(__name__)
-CORS(app)   # 👈 this line is very important
+CORS(app)
+
+users = []
+
+UPLOAD_FOLDER = "uploads"
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
 
 @app.route("/")
 def home():
@@ -10,15 +17,21 @@ def home():
 
 @app.route("/register", methods=["POST"])
 def register():
-    data = request.json
-    name = data.get("name")
-    email = data.get("email")
-    password = data.get("password")
+    ...
 
-    print("New User Registered:")
-    print(name, email, password)
+@app.route("/login", methods=["POST"])
+def login():
+    ...
 
-    return jsonify({"message": "User registered successfully!"})
+@app.route("/upload", methods=["POST"])
+def upload():
+    if "file" not in request.files:
+        return jsonify({"message": "No file uploaded"})
+
+    file = request.files["file"]
+    file.save(os.path.join(UPLOAD_FOLDER, file.filename))
+
+    return jsonify({"message": "File uploaded successfully!"})
 
 if __name__ == "__main__":
     app.run(debug=True)
