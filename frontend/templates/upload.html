@@ -1,24 +1,35 @@
 <!DOCTYPE html>
 <html>
+<head>
+    <title>Upload Notes</title>
+</head>
 <body>
-<h2>Upload Notes</h2>
+    <h2>Upload Subject Notes</h2>
 
-<form action="/generate" method="post" enctype="multipart/form-data">
+    <input type="file" id="file"><br><br>
 
-Exam Type:
-<select name="exam">
-  <option>Unit Test 1</option>
-  <option>Unit Test 2</option>
-  <option>Semester</option>
-</select>
-<br><br>
+    <button onclick="uploadFile()">Upload</button>
 
-Upload Notes (.txt file):
-<input type="file" name="file">
-<br><br>
+    <p id="result"></p>
 
-<button type="submit">Generate Notes</button>
+    <script>
+        function uploadFile() {
+            const fileInput = document.getElementById("file");
+            const file = fileInput.files[0];
 
-</form>
+            const formData = new FormData();
+            formData.append("file", file);
+
+            fetch("http://127.0.0.1:5000/upload", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("result").innerText = data.message;
+            })
+            .catch(error => console.log(error));
+        }
+    </script>
 </body>
 </html>
