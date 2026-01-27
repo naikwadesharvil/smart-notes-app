@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Register</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="container">
+    <h2>📘 Smart Notes - Register</h2>
+
+    <input type="email" id="email" placeholder="Enter Email">
+    <input type="password" id="password" placeholder="Enter Password">
+
+    <button onclick="registerUser()">Register</button>
+
+    <p id="msg"></p>
+
+    <p>Already have an account? <a href="/login">Login</a></p>
+
+    <script>
+        function registerUser() {
+            fetch("/register", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    email: document.getElementById("email").value,
+                    password: document.getElementById("password").value
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById("msg").innerText = data.message;
+            });
+        }
+    </script>
+</div>
+</body>
+</html>

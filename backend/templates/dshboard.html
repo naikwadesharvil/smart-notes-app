@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+</head>
+<body>
+<h2>📊 Your Upload History</h2>
+
+{% for item in data %}
+<div style="border:1px solid black; padding:10px; margin:10px;">
+    <b>Branch:</b> {{ item.branch }} <br>
+    <b>Subject:</b> {{ item.subject }} <br>
+    <b>Summary:</b> {{ item.summary }}
+</div>
+{% endfor %}
+
+<a href="/upload">Back to Upload</a>
+</body>
+</html>

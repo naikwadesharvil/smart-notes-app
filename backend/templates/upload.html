@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload Notes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="container">
+    <h2>📤 Upload Notes</h2>
+
+    <select id="branch">
+        <option>AIML</option>
+        <option>CSE</option>
+        <option>ECE</option>
+    </select><br><br>
+
+    <select id="subject">
+        <option>Machine Learning</option>
+        <option>DBMS</option>
+        <option>Computer Networks</option>
+        <option>Operating System</option>
+    </select><br><br>
+
+    <input type="file" id="file"><br><br>
+    <button onclick="uploadFile()">Generate Notes</button>
+
+    <h3>✨ Summary:</h3>
+    <p id="summary"></p>
+
+    <h3>📘 Generated Questions:</h3>
+    <ul id="questions"></ul>
+
+    <br>
+    <a href="/dashboard">View History</a><br><br>
+    <a href="/logout">Logout</a>
+</div>
+
+<script>
+function uploadFile(){
+    const file = document.getElementById("file").files[0];
+    const branch = document.getElementById("branch").value;
+    const subject = document.getElementById("subject").value;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("branch", branch);
+    formData.append("subject", subject);
+
+    fetch("/upload", {
+        method: "POST",
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        // show summary
+        document.getElementById("summary").innerText =
+            "Branch: " + data.branch + 
+            "\nSubject: " + data.subject + 
+            "\n\n" + data.summary;
+
+        // show questions
+        const qList = document.getElementById("questions");
+        qList.innerHTML = "";   // clear old questions
+
+        data.questions.forEach(q => {
+            const li = document.createElement("li");
+            li.innerText = q;
+            qList.appendChild(li);
+        });
+    });
+}
+</script>
+</body>
+</html>
+
