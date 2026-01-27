@@ -1,38 +1,51 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Upload Notes</title>
+    <title>Smart Notes</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-<div class="container">
-    <h2>📤 Upload Notes</h2>
 
-    <select id="branch">
-        <option>AIML</option>
-        <option>CSE</option>
-        <option>ECE</option>
-    </select><br><br>
+<div class="main-container">
 
-    <select id="subject">
-        <option>Machine Learning</option>
-        <option>DBMS</option>
-        <option>Computer Networks</option>
-        <option>Operating System</option>
-    </select><br><br>
+    <div class="card">
+        <h2>📤 Smart Notes Generator</h2>
 
-    <input type="file" id="file"><br><br>
-    <button onclick="uploadFile()">Generate Notes</button>
+        <select id="branch">
+            <option>AIML</option>
+            <option>CSE</option>
+            <option>ECE</option>
+        </select>
 
-    <h3>✨ Summary:</h3>
-    <p id="summary"></p>
+        <select id="subject">
+            <option>Machine Learning</option>
+            <option>DBMS</option>
+            <option>Computer Networks</option>
+            <option>Operating System</option>
+        </select>
 
-    <h3>📘 Generated Questions:</h3>
-    <ul id="questions"></ul>
+        <input type="file" id="file">
 
-    <br>
-    <a href="/dashboard">View History</a><br><br>
-    <a href="/logout">Logout</a>
+        <button onclick="uploadFile()">Generate Notes</button>
+
+        <div class="result-box">
+            <h3>✨ Summary</h3>
+            <p id="summary"></p>
+
+            <h3>📘 Generated Questions</h3>
+            <ul id="questions"></ul>
+        </div>
+
+        <button class="pdf-btn" onclick="window.location.href='/download_pdf'">
+            📄 Download Result as PDF
+        </button>
+
+        <div class="links">
+            <a href="/dashboard">View History</a> |
+            <a href="/logout">Logout</a>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -52,15 +65,14 @@ function uploadFile(){
     })
     .then(res => res.json())
     .then(data => {
-        // show summary
+
         document.getElementById("summary").innerText =
-            "Branch: " + data.branch + 
-            "\nSubject: " + data.subject + 
+            "Branch: " + data.branch +
+            "\nSubject: " + data.subject +
             "\n\n" + data.summary;
 
-        // show questions
         const qList = document.getElementById("questions");
-        qList.innerHTML = "";   // clear old questions
+        qList.innerHTML = "";
 
         data.questions.forEach(q => {
             const li = document.createElement("li");
@@ -70,6 +82,6 @@ function uploadFile(){
     });
 }
 </script>
+
 </body>
 </html>
-

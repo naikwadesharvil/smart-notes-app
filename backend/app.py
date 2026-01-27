@@ -1,7 +1,9 @@
-from flask import Flask, request, jsonify, render_template, redirect, url_for, session
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import PyPDF2
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 
 app = Flask(__name__)
 app.secret_key = "smart_notes_secret"
@@ -35,16 +37,14 @@ def register():
         "password": generate_password_hash(password)
     })
 
-    # Auto login after register
+    # auto login after register
     session["user"] = email
-
     return jsonify({"message": "Registration successful"})
 
 
 # ---------------- LOGIN ----------------
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    # if already logged in
     if "user" in session:
         return redirect(url_for("upload"))
 
@@ -73,18 +73,15 @@ def logout():
 # ---------------- SUMMARY FUNCTION ----------------
 def generate_summary(text, num_sentences=5):
     sentences = text.split(".")
-    summary = sentences[:num_sentences]
-    return ". ".join(summary)
+    return ". ".join(sentences[:num_sentences])
 
 
 def generate_questions(text):
     sentences = text.split(".")
     questions = []
-
     for i in range(min(5, len(sentences))):
         q = f"Q{i+1}. Explain: {sentences[i].strip()}?"
         questions.append(q)
-
     return questions
 
 
@@ -96,7 +93,6 @@ def upload():
 
     if request.method == "GET":
         return render_template("upload.html")
-
 
     file = request.files["file"]
     branch = request.form.get("branch")
@@ -115,7 +111,6 @@ def upload():
         with open(filepath, "r", encoding="utf-8") as f:
             text = f.read()
 
-    # Generate summary and questions
     summary = generate_summary(text)
     questions = generate_questions(text)
 
@@ -135,8 +130,48 @@ def upload():
     })
 
 
-# ---------------- DASHBOARD ----------------
+# ---------------- DOWNLOAD PDF ----------------
+@app.route("/download_pdf")
+def download_pdf():
+    if "user" not in session:
+        return redirect(url_for("login"))
 
+    if len(history) == 0:
+        return "No data to download"
+
+    last = history[-1]
+
+    file_path = "result.pdf"
+    c = canvas.Canvas(file_path, pagesize=letter)
+    text = c.beginText(40, 750)
+
+    text.textLine(f"Branch: {last['branch']}")
+    text.textLine(f"Subject: {last['subject']}")
+    text.textLine("")
+    text.textLine("SUMMARY:")
+    text.textLine("-------------------------")
+
+    for line in last["summary"].split("\n"):
+        text.textLine(line)
+
+    text.textLine("")
+    text.textLine("QUESTIONS:")
+    text.textLine("-------------------------")
+
+    for q in last["questions"]:
+        text.textLine(q)
+
+    c.drawText(text)
+    c.save()
+
+    return send_file(file_path, as_attachment=True)
+
+
+# ---------------- DASHBOARD ----------------
+@app.route("/dashboard")
+def dashboard():
+    if "user" not in session:
+        return redirect(url_for("login"))
 
     user_history = [h for h in history if h["email"] == session["user"]]
     return render_template("dashboard.html", data=user_history)
