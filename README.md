@@ -10,16 +10,16 @@ This system helps students prepare effectively for Unit Tests and Semester Exams
 
 ---
 
-## 🚀 Features
+## Features
 
-- 🔐 User Registration & Login system
-- 🏫 Branch & Subject selection
-- 📂 Upload TXT or PDF notes
-- ✨ Automatic Summary Generation
-- ❓ Question Generation from notes
-- 📄 Download results as PDF
-- 📊 User Dashboard with history
-- 🎨 Clean and responsive UI
+-  User Registration & Login system
+-  Branch & Subject selection
+-  Upload TXT or PDF notes
+-  Automatic Summary Generation
+-  Question Generation from notes
+-  Download results as PDF
+-  User Dashboard with history
+-  Clean and responsive UI
 
 ---
 
@@ -40,7 +40,7 @@ This system helps students prepare effectively for Unit Tests and Semester Exams
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
-## 🌍 Live Demo
+##  Live Demo
 https://smart-notes-app-w9pm.onrender.com
