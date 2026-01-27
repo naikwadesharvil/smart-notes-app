@@ -42,3 +42,5 @@ This system helps students prepare effectively for Unit Tests and Semester Exams
 
 ## 📁 Project Structure
 
+## 🌍 Live Demo
+https://smart-notes-app-w9pm.onrender.com
