@@ -1,28 +1,91 @@
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_sqlalchemy import SQLAlchemy
 import os
 import PyPDF2
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+import nltk
+import re
+from nltk.tokenize import sent_tokenize
+
+nltk.download("punkt")
 
 app = Flask(__name__)
 app.secret_key = "smart_notes_secret"
 
+# ---------------- CONFIG ----------------
 UPLOAD_FOLDER = "uploads"
+ALLOWED_EXTENSIONS = {"pdf", "txt"}
+
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///smartnotes.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+db = SQLAlchemy(app)
+
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
-users = []
-history = []
+# ---------------- MODELS ----------------
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password = db.Column(db.String(200), nullable=False)
 
 
-# ---------------- HOME ----------------
+class History(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120))
+    branch = db.Column(db.String(100))
+    subject = db.Column(db.String(100))
+    summary = db.Column(db.Text)
+    questions = db.Column(db.Text)
+
+
+# ---------------- HELPERS ----------------
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def generate_summary(text, num_sentences=5):
+    sentences = sent_tokenize(text)
+    return " ".join(sentences[:num_sentences])
+
+
+def generate_questions(text):
+    text = re.sub(r'\s+', ' ', text)
+    sentences = sent_tokenize(text)
+
+    questions = []
+    seen = set()
+
+    for s in sentences:
+        s = re.sub(r'[^A-Za-z0-9 ,.]+', '', s).strip()
+
+        if len(s) < 25:
+            continue
+
+        if s in seen:
+            continue
+        seen.add(s)
+
+        q = f"Explain in detail: {s}?"
+        questions.append(q)
+
+        if len(questions) == 5:
+            break
+
+    return questions
+
+
+# ---------------- ROUTES ----------------
 @app.route("/")
 def home():
     return redirect(url_for("login"))
 
 
-# ---------------- REGISTER ----------------
+# -------- REGISTER --------
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "GET":
@@ -32,17 +95,20 @@ def register():
     email = data.get("email")
     password = data.get("password")
 
-    users.append({
-        "email": email,
-        "password": generate_password_hash(password)
-    })
+    if User.query.filter_by(email=email).first():
+        return jsonify({"message": "User already exists"})
 
-    # auto login after register
+    hashed = generate_password_hash(password)
+    new_user = User(email=email, password=hashed)
+
+    db.session.add(new_user)
+    db.session.commit()
+
     session["user"] = email
     return jsonify({"message": "Registration successful"})
 
 
-# ---------------- LOGIN ----------------
+# -------- LOGIN --------
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if "user" in session:
@@ -55,37 +121,23 @@ def login():
     email = data.get("email")
     password = data.get("password")
 
-    for user in users:
-        if user["email"] == email and check_password_hash(user["password"], password):
-            session["user"] = email
-            return jsonify({"message": "Login successful"})
+    user = User.query.filter_by(email=email).first()
+
+    if user and check_password_hash(user.password, password):
+        session["user"] = email
+        return jsonify({"message": "Login successful"})
 
     return jsonify({"message": "Invalid email or password"})
 
 
-# ---------------- LOGOUT ----------------
+# -------- LOGOUT --------
 @app.route("/logout")
 def logout():
     session.pop("user", None)
     return redirect(url_for("login"))
 
 
-# ---------------- SUMMARY FUNCTION ----------------
-def generate_summary(text, num_sentences=5):
-    sentences = text.split(".")
-    return ". ".join(sentences[:num_sentences])
-
-
-def generate_questions(text):
-    sentences = text.split(".")
-    questions = []
-    for i in range(min(5, len(sentences))):
-        q = f"Q{i+1}. Explain: {sentences[i].strip()}?"
-        questions.append(q)
-    return questions
-
-
-# ---------------- UPLOAD ----------------
+# -------- UPLOAD --------
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
     if "user" not in session:
@@ -94,33 +146,55 @@ def upload():
     if request.method == "GET":
         return render_template("upload.html")
 
-    file = request.files["file"]
+    file = request.files.get("file")
     branch = request.form.get("branch")
     subject = request.form.get("subject")
 
-    filepath = os.path.join(UPLOAD_FOLDER, file.filename)
+    if not file or file.filename == "":
+        return jsonify({"error": "No file selected"}), 400
+
+    if not allowed_file(file.filename):
+        return jsonify({"error": "Only PDF and TXT files allowed"}), 400
+
+    filepath = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
     file.save(filepath)
 
-    # Read TXT or PDF
-    if file.filename.endswith(".pdf"):
-        text = ""
-        pdf = PyPDF2.PdfReader(filepath)
-        for page in pdf.pages:
-            text += page.extract_text()
-    else:
-        with open(filepath, "r", encoding="utf-8") as f:
-            text = f.read()
+    text = ""
 
-    summary = generate_summary(text)
-    questions = generate_questions(text)
+    try:
+        if file.filename.endswith(".pdf"):
+            pdf = PyPDF2.PdfReader(filepath)
+            for page in pdf.pages[:10]:   # limit pages for large PDF
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text
+        else:
+            with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+                text = f.read()
 
-    history.append({
-        "email": session["user"],
-        "branch": branch,
-        "subject": subject,
-        "summary": summary,
-        "questions": questions
-    })
+    except Exception as e:
+        print("File error:", e)
+        return jsonify({"error": "Failed to read file"}), 500
+
+    if len(text.strip()) == 0:
+        return jsonify({"error": "File contains no readable text"}), 400
+
+    sentences = sent_tokenize(text)
+    limited_text = " ".join(sentences[:30])
+
+    summary = generate_summary(limited_text)
+    questions = generate_questions(limited_text)
+
+    new_history = History(
+        email=session["user"],
+        branch=branch,
+        subject=subject,
+        summary=summary,
+        questions="||".join(questions)
+    )
+
+    db.session.add(new_history)
+    db.session.commit()
 
     return jsonify({
         "branch": branch,
@@ -130,35 +204,35 @@ def upload():
     })
 
 
-# ---------------- DOWNLOAD PDF ----------------
+# -------- DOWNLOAD PDF --------
 @app.route("/download_pdf")
 def download_pdf():
     if "user" not in session:
         return redirect(url_for("login"))
 
-    if len(history) == 0:
-        return "No data to download"
+    last = History.query.filter_by(email=session["user"]).order_by(History.id.desc()).first()
 
-    last = history[-1]
+    if not last:
+        return "No data available"
 
     file_path = "result.pdf"
     c = canvas.Canvas(file_path, pagesize=letter)
     text = c.beginText(40, 750)
 
-    text.textLine(f"Branch: {last['branch']}")
-    text.textLine(f"Subject: {last['subject']}")
+    text.textLine(f"Branch: {last.branch}")
+    text.textLine(f"Subject: {last.subject}")
     text.textLine("")
     text.textLine("SUMMARY:")
-    text.textLine("-------------------------")
+    text.textLine("----------------")
 
-    for line in last["summary"].split("\n"):
+    for line in last.summary.split("\n"):
         text.textLine(line)
 
     text.textLine("")
     text.textLine("QUESTIONS:")
-    text.textLine("-------------------------")
+    text.textLine("----------------")
 
-    for q in last["questions"]:
+    for q in last.questions.split("||"):
         text.textLine(q)
 
     c.drawText(text)
@@ -167,16 +241,21 @@ def download_pdf():
     return send_file(file_path, as_attachment=True)
 
 
-# ---------------- DASHBOARD ----------------
+# -------- DASHBOARD --------
 @app.route("/dashboard")
 def dashboard():
     if "user" not in session:
         return redirect(url_for("login"))
 
-    user_history = [h for h in history if h["email"] == session["user"]]
-    return render_template("dashboard.html", data=user_history)
+    data = History.query.filter_by(email=session["user"]).all()
+    return render_template("dashboard.html", data=data)
 
 
+# -------- CREATE DB --------
+with app.app_context():
+    db.create_all()
+
+
+# -------- RUN --------
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
-
+    app.run(debug=True)

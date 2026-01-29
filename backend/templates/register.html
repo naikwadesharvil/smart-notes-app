@@ -1,38 +1,49 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Register</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-<div class="container">
-    <h2>📘 Smart Notes - Register</h2>
+{% extends "base.html" %}
 
-    <input type="email" id="email" placeholder="Enter Email">
-    <input type="password" id="password" placeholder="Enter Password">
+{% block content %}
+<h2>📝 Create Account</h2>
 
-    <button onclick="registerUser()">Register</button>
+<form id="registerForm">
+    <input type="email" name="email" placeholder="Enter Email" required>
+    <input type="password" name="password" placeholder="Enter Password" required>
 
-    <p id="msg"></p>
+    <button type="submit">Register</button>
+</form>
 
-    <p>Already have an account? <a href="/login">Login</a></p>
+<p id="message" style="margin-top:10px; color:red;"></p>
 
-    <script>
-        function registerUser() {
-            fetch("/register", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({
-                    email: document.getElementById("email").value,
-                    password: document.getElementById("password").value
-                })
-            })
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById("msg").innerText = data.message;
-            });
-        }
-    </script>
-</div>
-</body>
-</html>
+<p style="margin-top:10px;">
+    Already have an account?
+    <a href="/login">Login here</a>
+</p>
+
+<script>
+const form = document.getElementById("registerForm");
+const message = document.getElementById("message");
+
+form.addEventListener("submit", async function(e){
+    e.preventDefault();
+
+    const data = {
+        email: form.email.value,
+        password: form.password.value
+    };
+
+    const response = await fetch("/register", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+    });
+
+    const result = await response.json();
+
+    if (result.message === "Registration successful") {
+        window.location.href = "/upload";
+    } else {
+        message.textContent = result.message;
+    }
+});
+</script>
+{% endblock %}

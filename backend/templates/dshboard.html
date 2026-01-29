@@ -1,19 +1,130 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Dashboard</title>
+    <meta charset="UTF-8">
+    <title>Dashboard - Smart Notes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body {
+            margin: 0;
+            font-family: "Segoe UI", sans-serif;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h2 {
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .top-links {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .top-links a {
+            margin: 0 10px;
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: scale(1.02);
+        }
+
+        .card h3 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        .tag {
+            display: inline-block;
+            background: #007bff;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 5px;
+            font-size: 12px;
+            margin-right: 5px;
+        }
+
+        .summary {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #444;
+        }
+
+        .questions {
+            margin-top: 10px;
+        }
+
+        .questions li {
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .no-data {
+            color: white;
+            text-align: center;
+            font-size: 18px;
+        }
+    </style>
 </head>
 <body>
-<h2>📊 Your Upload History</h2>
 
-{% for item in data %}
-<div style="border:1px solid black; padding:10px; margin:10px;">
-    <b>Branch:</b> {{ item.branch }} <br>
-    <b>Subject:</b> {{ item.subject }} <br>
-    <b>Summary:</b> {{ item.summary }}
+<h2>📊 Your Study History</h2>
+
+<div class="top-links">
+    <a href="/upload">⬅ Back to Upload</a>
+    |
+    <a href="/logout">🚪 Logout</a>
 </div>
-{% endfor %}
 
-<a href="/upload">Back to Upload</a>
+{% if data|length == 0 %}
+    <p class="no-data">No history available yet. Upload notes first.</p>
+{% endif %}
+
+<div class="container">
+    {% for item in data %}
+    <div class="card">
+        <h3>{{ item.subject }}</h3>
+
+        <div>
+            <span class="tag">{{ item.branch }}</span>
+        </div>
+
+        <div class="summary">
+            <strong>Summary:</strong>
+            <p>{{ item.summary }}</p>
+        </div>
+
+        <div class="questions">
+            <strong>Questions:</strong>
+            <ul>
+                {% for q in item.questions.split("||") %}
+                    <li>{{ q }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
 </body>
 </html>
