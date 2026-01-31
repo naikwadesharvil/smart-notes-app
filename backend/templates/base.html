@@ -4,93 +4,23 @@
     <meta charset="UTF-8">
     <title>Smart Notes App</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-        body {
-            margin: 0;
-            font-family: "Segoe UI", sans-serif;
-            background: linear-gradient(135deg, #4facfe, #00f2fe);
-            min-height: 100vh;
-        }
-
-        header {
-            background: #222;
-            color: white;
-            padding: 15px;
-            text-align: center;
-            font-size: 22px;
-            font-weight: bold;
-        }
-
-        nav {
-            background: #333;
-            padding: 10px;
-            text-align: center;
-        }
-
-        nav a {
-            color: white;
-            margin: 0 12px;
-            text-decoration: none;
-            font-weight: bold;
-        }
-
-        nav a:hover {
-            text-decoration: underline;
-        }
-
-        .content {
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-        }
-
-        footer {
-            background: #222;
-            color: white;
-            text-align: center;
-            padding: 10px;
-            position: fixed;
-            width: 100%;
-            bottom: 0;
-        }
-
-        .page-card {
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            width: 100%;
-            max-width: 450px;
-        }
-    </style>
 </head>
 <body>
 
-<header>
-    📘 Smart Notes Generator
-</header>
-
 <nav>
+    <h2>📘 Smart Notes</h2>
     {% if session.get("user") %}
-        <a href="/upload">Upload</a>
-        <a href="/dashboard">Dashboard</a>
-        <a href="/logout">Logout</a>
-    {% else %}
-        <a href="/login">Login</a>
-        <a href="/register">Register</a>
+        <div>
+            <a href="/upload">Upload</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/logout">Logout</a>
+        </div>
     {% endif %}
 </nav>
 
-<div class="content">
-    <div class="page-card">
-        {% block content %}
-        {% endblock %}
-    </div>
+<div class="container">
+    {% block content %}{% endblock %}
 </div>
-
-<footer>
-    © 2026 Smart Notes App | Built by Sharvil
-</footer>
 
 </body>
 </html>

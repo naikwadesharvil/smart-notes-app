@@ -1,13 +1,13 @@
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
-import os
+import os, re
 import PyPDF2
-from reportlab.lib.pagesizes import letter
+from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
-import nltk
-import re
 from nltk.tokenize import sent_tokenize
+import nltk
+import textwrap
 
 nltk.download("punkt")
 
@@ -33,7 +33,6 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
 
-
 class History(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120))
@@ -42,48 +41,41 @@ class History(db.Model):
     summary = db.Column(db.Text)
     questions = db.Column(db.Text)
 
-
 # ---------------- HELPERS ----------------
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def clean_text(text):
+    text = re.sub(r'\s+', ' ', text)
+    text = re.sub(r'[^A-Za-z0-9., ]+', '', text)
+    return text.strip()
 
 def generate_summary(text, num_sentences=5):
     sentences = sent_tokenize(text)
     return " ".join(sentences[:num_sentences])
 
-
 def generate_questions(text):
-    text = re.sub(r'\s+', ' ', text)
     sentences = sent_tokenize(text)
-
     questions = []
     seen = set()
 
     for s in sentences:
-        s = re.sub(r'[^A-Za-z0-9 ,.]+', '', s).strip()
-
-        if len(s) < 25:
+        s = clean_text(s)
+        if len(s) < 30:
             continue
-
         if s in seen:
             continue
         seen.add(s)
-
-        q = f"Explain in detail: {s}?"
-        questions.append(q)
-
+        questions.append(f"Explain in detail: {s}?")
         if len(questions) == 5:
             break
 
     return questions
 
-
 # ---------------- ROUTES ----------------
 @app.route("/")
 def home():
     return redirect(url_for("login"))
-
 
 # -------- REGISTER --------
 @app.route("/register", methods=["GET", "POST"])
@@ -107,7 +99,6 @@ def register():
     session["user"] = email
     return jsonify({"message": "Registration successful"})
 
-
 # -------- LOGIN --------
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -129,13 +120,11 @@ def login():
 
     return jsonify({"message": "Invalid email or password"})
 
-
 # -------- LOGOUT --------
 @app.route("/logout")
 def logout():
     session.pop("user", None)
     return redirect(url_for("login"))
-
 
 # -------- UPLOAD --------
 @app.route("/upload", methods=["GET", "POST"])
@@ -164,16 +153,14 @@ def upload():
     try:
         if file.filename.endswith(".pdf"):
             pdf = PyPDF2.PdfReader(filepath)
-            for page in pdf.pages[:10]:   # limit pages for large PDF
+            for page in pdf.pages[:10]:
                 page_text = page.extract_text()
                 if page_text:
                     text += page_text
         else:
             with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
                 text = f.read()
-
-    except Exception as e:
-        print("File error:", e)
+    except:
         return jsonify({"error": "Failed to read file"}), 500
 
     if len(text.strip()) == 0:
@@ -203,43 +190,49 @@ def upload():
         "questions": questions
     })
 
-
-# -------- DOWNLOAD PDF --------
+# -------- DOWNLOAD PDF (CLEAN FORMAT) --------
 @app.route("/download_pdf")
 def download_pdf():
     if "user" not in session:
         return redirect(url_for("login"))
 
     last = History.query.filter_by(email=session["user"]).order_by(History.id.desc()).first()
-
     if not last:
         return "No data available"
 
     file_path = "result.pdf"
-    c = canvas.Canvas(file_path, pagesize=letter)
-    text = c.beginText(40, 750)
+    c = canvas.Canvas(file_path, pagesize=A4)
+    width, height = A4
+    y = height - 40
 
-    text.textLine(f"Branch: {last.branch}")
-    text.textLine(f"Subject: {last.subject}")
-    text.textLine("")
-    text.textLine("SUMMARY:")
-    text.textLine("----------------")
+    def draw_line(text):
+        nonlocal y
+        wrapped = textwrap.wrap(text, 90)
+        for line in wrapped:
+            if y < 40:
+                c.showPage()
+                y = height - 40
+            c.drawString(40, y, line)
+            y -= 15
 
-    for line in last.summary.split("\n"):
-        text.textLine(line)
+    draw_line(f"Branch: {last.branch}")
+    draw_line(f"Subject: {last.subject}")
+    draw_line("")
+    draw_line("SUMMARY:")
+    draw_line("----------------")
 
-    text.textLine("")
-    text.textLine("QUESTIONS:")
-    text.textLine("----------------")
+    for line in last.summary.split("."):
+        draw_line(line.strip())
+
+    draw_line("")
+    draw_line("QUESTIONS:")
+    draw_line("----------------")
 
     for q in last.questions.split("||"):
-        text.textLine(q)
+        draw_line(q)
 
-    c.drawText(text)
     c.save()
-
     return send_file(file_path, as_attachment=True)
-
 
 # -------- DASHBOARD --------
 @app.route("/dashboard")
@@ -250,12 +243,13 @@ def dashboard():
     data = History.query.filter_by(email=session["user"]).all()
     return render_template("dashboard.html", data=data)
 
-
 # -------- CREATE DB --------
 with app.app_context():
     db.create_all()
 
-
-# -------- RUN --------
+# -------- RUN (Render Compatible) --------
 if __name__ == "__main__":
-    app.run(debug=True)
+    import os
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
+

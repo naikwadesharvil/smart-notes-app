@@ -1,0 +1,5 @@
+backend/instance/
+backend/uploads/
+*.pdf
+*.db
+__pycache__/
