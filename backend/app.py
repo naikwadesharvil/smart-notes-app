@@ -167,7 +167,7 @@ def upload():
         return jsonify({"error": "File contains no readable text"}), 400
 
     sentences = sent_tokenize(text)
-    limited_text = " ".join(sentences[:30])
+    limited_text = " ".join(sentences[:5])
 
     summary = generate_summary(limited_text)
     questions = generate_questions(limited_text)

@@ -143,6 +143,16 @@
     </div>
 </div>
 
+<div id="loader" style="display:none;">
+  <p>⏳ Generating notes, please wait...</p>
+</div>
+
+<script>
+document.querySelector("form").onsubmit = function() {
+  document.getElementById("loader").style.display = "block";
+};
+</script>
+
 <script>
     const form = document.getElementById("uploadForm");
     const loader = document.getElementById("loader");
